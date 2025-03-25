@@ -1,0 +1,224 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import itertools
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as tk
+from tkinter import ttk
+
+# GLOBALNA KONFIGURACJA STYLU
+def configure_style():
+    sns.set_style("whitegrid")
+    sns.set_palette("pastel")
+    plt.rcParams['font.family'] = 'DejaVu Sans'
+    plt.rcParams['font.size'] = 10
+    plt.rcParams['axes.titlesize'] = 12
+    plt.rcParams['axes.labelsize'] = 10
+    plt.rcParams['grid.alpha'] = 0.3
+    plt.rcParams['grid.linestyle'] = '--'
+
+# TWORZENIE OKNA GŁÓWNEGO
+def create_main_window(title, size="1400x1000"):
+    root = tk.Tk()
+    root.title(title)
+    root.geometry(size)
+    
+    def on_closing():
+        plt.close('all')
+        root.destroy()
+    root.protocol("WM_DELETE_WINDOW", on_closing)
+    
+    main_frame = tk.Frame(root)
+    main_frame.pack(fill=tk.BOTH, expand=True)
+    
+    canvas = tk.Canvas(main_frame)
+    canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    
+    scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=canvas.yview)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    
+    canvas.configure(yscrollcommand=scrollbar.set)
+    canvas.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+    
+    content_frame = tk.Frame(canvas)
+    canvas.create_window((0, 0), window=content_frame, anchor="nw")
+    
+    return root, content_frame
+
+# WCZYTYWANIE DANYCH TESTOWYCH
+def load_test_data():
+    nr_testow = 5
+    tryby = list(itertools.permutations(["gaussian", "linear", "inverse_linear"], 2))
+    
+    test_data = []
+    for i in range(1, nr_testow + 1):
+        for tryb in tryby:
+            try:
+                df = pd.read_csv(f"graphs/test_{i}_{tryb[0]}_{tryb[1]}.txt", 
+                                header=None, sep='\s+',
+                                names=['PID', 'Arrival', 'Burst', 'Priority', 'Col5', 'Col6', 'Col7'])
+                test_data.append({
+                    'Test': f"Test {i}",
+                    'Tryb': f"{tryb[0]}_{tryb[1]}",
+                    'Dane': df
+                })
+            except FileNotFoundError:
+                continue
+    return test_data
+
+# WCZYTYWANIE WYNIKÓW ALGORYTMÓW I GŁODZENIA
+def load_algorithm_results():
+    tryby = list(itertools.permutations(["gaussian", "linear", "inverse_linear"], 2))
+    
+    results = []
+    for tryb in tryby:
+        try:
+            # Wyniki algorytmów
+            with open(f"graphs/wyniki_{tryb[0]}_{tryb[1]}.txt", 'r') as f:
+                alg_data = list(map(float, f.read().split()))
+            
+            # Dane o głodzonych procesach
+            with open(f"graphs/starvation_{tryb[0]}_{tryb[1]}.txt", 'r') as f:
+                starvation_data = list(map(int, f.read().split()))
+            
+            results.append({
+                'Tryb': f"{tryb[0]}_{tryb[1]}",
+                'Algorytmy': {
+                    'FCFS': {'WT': alg_data[0], 'TAT': alg_data[1], 'Starvation': starvation_data[0]},
+                    'SJF': {'WT': alg_data[2], 'TAT': alg_data[3], 'Starvation': starvation_data[1]},
+                    'SJF_wyw': {'WT': alg_data[4], 'TAT': alg_data[5], 'Starvation': starvation_data[2]},
+                    'RR': {'WT': alg_data[6], 'TAT': alg_data[7], 'Starvation': starvation_data[3]}
+                }
+            })
+        except FileNotFoundError:
+            continue
+    return results
+
+# TWORZENIE TABELI W TKINTER
+def create_table(parent, title, columns, data):
+    frame = ttk.LabelFrame(parent, text=title)
+    frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+    
+    tree = ttk.Treeview(frame, columns=columns, show='headings')
+    for col in columns:
+        tree.heading(col, text=col)
+        tree.column(col, width=100, anchor=tk.CENTER)
+    
+    for row in data:
+        tree.insert('', tk.END, values=row)
+    
+    scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=tree.yview)
+    tree.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    tree.pack(fill=tk.BOTH, expand=True)
+    
+    return frame
+
+# WIZUALIZACJA DANYCH TESTOWYCH
+def show_test_data(test_data, parent_frame):
+    for test in test_data:
+        test_frame = ttk.LabelFrame(parent_frame, text=f"{test['Test']} - {test['Tryb']}")
+        test_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        df = test['Dane']
+        
+        # Wykresy rozkładów
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        fig.suptitle(f"Rozkłady czasów - {test['Test']} - {test['Tryb']}")
+        
+        sns.histplot(data=df, x='Arrival', ax=ax1, kde=True, color='#4c72b0', bins=20)
+        ax1.set_title("Rozkład czasu przybycia")
+        ax1.set_xlabel("Czas przybycia")
+        
+        sns.histplot(data=df, x='Burst', ax=ax2, kde=True, color='#dd8452', bins=20)
+        ax2.set_title("Rozkład czasu wykonania")
+        ax2.set_xlabel("Czas wykonania")
+        
+        plt.tight_layout()
+        
+        canvas = FigureCanvasTkAgg(fig, master=test_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+# WIZUALIZACJA WYNIKÓW ALGORYTMÓW
+def show_algorithm_results(results, parent_frame):
+    for result in results:
+        result_frame = ttk.LabelFrame(parent_frame, text=f"Wyniki - {result['Tryb']}")
+        result_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Przygotowanie danych do tabel
+        alg_data = []
+        starvation_counts = []
+        for alg_name, alg_values in result['Algorytmy'].items():
+            alg_data.append([alg_name, f"{alg_values['WT']:.2f}", f"{alg_values['TAT']:.2f}"])
+            starvation_counts.append({'Algorytm': alg_name, 'Liczba głodzeń': alg_values['Starvation']})
+        
+        # Tabela wyników algorytmów
+        create_table(result_frame, 
+                   "Średnie czasy wykonania",
+                   ['Algorytm', 'WT', 'TAT'],
+                   alg_data)
+        
+        # Wykresy porównawcze
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        fig.suptitle(f"Porównanie algorytmów - {result['Tryb']}")
+        
+        df = pd.DataFrame([
+            {'Algorytm': alg, 'WT': values['WT'], 'TAT': values['TAT']}
+            for alg, values in result['Algorytmy'].items()
+        ])
+        
+        sns.barplot(data=df, x='Algorytm', y='WT', ax=ax1, palette="Blues_d")
+        ax1.set_title("Średni czas oczekiwania (WT)")
+        ax1.set_ylabel("Czas")
+        
+        sns.barplot(data=df, x='Algorytm', y='TAT', ax=ax2, palette="Reds_d")
+        ax2.set_title("Średni czas realizacji (TAT)")
+        ax2.set_ylabel("Czas")
+        
+        plt.tight_layout()
+        
+        canvas = FigureCanvasTkAgg(fig, master=result_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        
+        # **Dodanie histogramu dla głodzonych procesów**
+        if starvation_counts:
+            fig_starvation, ax_starvation = plt.subplots(figsize=(8, 5))
+            df_starvation = pd.DataFrame(starvation_counts)
+            
+            sns.barplot(data=df_starvation, x='Algorytm', y='Liczba głodzeń', ax=ax_starvation, palette="Oranges_d")
+            ax_starvation.set_title("Liczba głodzonych procesów")
+            ax_starvation.set_ylabel("Liczba procesów")
+            
+            canvas_starvation = FigureCanvasTkAgg(fig_starvation, master=result_frame)
+            canvas_starvation.draw()
+            canvas_starvation.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+
+# GŁÓWNA FUNKCJA
+def main():
+    configure_style()
+    root, content_frame = create_main_window("Kompleksowa analiza algorytmów planowania")
+    
+    # Wczytanie danych
+    test_data = load_test_data()
+    algorithm_results = load_algorithm_results()
+    
+    if not test_data and not algorithm_results:
+        tk.Label(content_frame, text="Brak danych do wyświetlenia").pack()
+    else:
+        # Nagłówek dla danych testowych
+        if test_data:
+            tk.Label(content_frame, text="DANE TESTOWE", font=('Helvetica', 14, 'bold')).pack(pady=10)
+            show_test_data(test_data, content_frame)
+        
+        # Nagłówek dla wyników algorytmów
+        if algorithm_results:
+            tk.Label(content_frame, text="WYNIKI ALGORYTMÓW", font=('Helvetica', 14, 'bold')).pack(pady=10)
+            show_algorithm_results(algorithm_results, content_frame)
+    
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
