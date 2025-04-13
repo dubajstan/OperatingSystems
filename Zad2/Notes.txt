@@ -1,0 +1,38 @@
+- dlugosc ciagu blokow ma byc modyfikowalna
+- porownanie wzgledem sumy przemieszczen glowicy, zaglodzen, przejsc z konca na poczatek (SCAN)
+- wartosci modyfikowalne: rozmiar dysku, liczba zadan real-time
+
+1. FCFS - przechowuje w kolejce zadania i latam po dysku tak jak one sa ulozone
+2. SSTF (Shortest Seek Time First) - obsluga ¿¹dañ najbli¿ej aktualnej pozycji g³owicy
+3. SCAN - g³owica chodzi w lewo i w prawo na zmiane
+4. C-SCAN - g³owica chodzi od lewej do prawej i znowu w kó³ko, po dotarciu do prawej zmienia swoja pozycje na poczatektablicy
+
+Strategie obs³ugi ¿¹dañ real-time: - ¿¹dania real-time maja priorytet wzgledem ¿¹dañ zwyk³ych
+1. EDF (Earliest Deadline First) - analogicznie do SSTF, ale wybiera do przetworzenia to zadanie, ktorego deadlne jest najkrotszy w sposob zachlanny
+2. FD-SCAN (Feasible Deadline SCAN) - realizowane s¹ rz¹dania, które s¹ mo¿iwe do zrealizowania w najkrótszym czasie i przy okazji zwyk³e po drodze
+
+zrobione przez goscia:
+- fcfs
+- sstf
+- scan
+- traverse_request
+- c-scan
+- edf
+- sstf-edf
+- fd_scan
+- sstf_fd_scan
+
+problemy:
+- dla SCAN - C-SCAN zrobic zeby zgloszenia pojawialy sie tuz za glowica
+- tylko srodek
+- tylko boki
+- czestotliwosc
+
+Generowane procesy -> wszystko ze wszystkim:
+- w srodku dysku
+- po bokach
+- rownomiernie
+- czestotliwosc w rozkladzie normalnym na poczatku i na koncu i w polowie
+- czestotliwosc rownomierna
+- graficzne przedstawienie ruchu glowicy
+- strategie ???????
