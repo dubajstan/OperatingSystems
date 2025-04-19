@@ -63,7 +63,7 @@ static void generateTests(int tests, Mode ModeArrivalTime, Mode ModeBurstTime) {
 	const double maxArrivalTime = 100000.0;
 	const double minArrivalTime = 0.0;
 	const size_t quant = 50;
-	const size_t starvationFactor = 5;
+	const size_t starvationFactor = 6;
 
 	size_t avgFCFS_TAT = 0;
 	size_t avgFCFS_WT = 0;
@@ -78,6 +78,11 @@ static void generateTests(int tests, Mode ModeArrivalTime, Mode ModeBurstTime) {
 	size_t starvedSJF = 0;
 	size_t starvedSJF_wyw = 0;
 	size_t starvedRR = 0;
+
+	size_t switchFCFS = 0;
+	size_t switchSJF = 0;
+	size_t switchSJF_wyw = 0;
+	size_t switchRR = 0;
 
 	std::vector<Mode> modes = { Mode::GAUSSIAN, Mode::LINEAR, Mode::INVERSE_LINEAR };
 	for (int i = 1; i <= tests; i++) {
@@ -113,6 +118,10 @@ static void generateTests(int tests, Mode ModeArrivalTime, Mode ModeBurstTime) {
 		starvedSJF += countStarved(avgSJF_WT, statsSJF.terminated, starvationFactor);
 		starvedSJF_wyw += countStarved(avgSJF_wyw_WT, statsSJF_wyw.terminated, starvationFactor);
 		starvedRR += countStarved(avgRR_WT, statsRR.terminated, starvationFactor);
+		switchFCFS += statsFCFS.switchCount;
+		switchSJF += statsSJF.switchCount;
+		switchSJF_wyw += statsSJF_wyw.switchCount;
+		switchRR += statsRR.switchCount;
 	}
 	avgFCFS_TAT /= tests;
 	avgFCFS_WT /= tests;
@@ -126,6 +135,10 @@ static void generateTests(int tests, Mode ModeArrivalTime, Mode ModeBurstTime) {
 	starvedSJF /= tests;
 	starvedSJF_wyw /= tests;
 	starvedRR /= tests;
+	switchFCFS /= tests;
+	switchSJF /= tests;
+	switchSJF_wyw /= tests;
+	switchRR /= tests;
 	std::cerr << "Wyniki dla trybu pojawiania sie procesow: " + modeToStr(ModeArrivalTime) + ", tryb trwania procesow: " + modeToStr(ModeBurstTime) << std::endl;
 	std::cerr << "Sredni czas oczekiwania dla FCFS: " << avgFCFS_WT << std::endl;
 	std::cerr << "Sredni czas obrotu dla FCFS: " << avgFCFS_TAT << std::endl;
@@ -147,11 +160,15 @@ static void generateTests(int tests, Mode ModeArrivalTime, Mode ModeBurstTime) {
 	}
 	file1 << starvedFCFS << " " << starvedSJF << " " << starvedSJF_wyw << " " << starvedRR << std::endl;
 	file1.close();
+	std::ofstream file2("graphs/switch_" + modeToStr(ModeArrivalTime) + "_" + modeToStr(ModeBurstTime) + ".txt");
+	file2 << switchFCFS << " " << switchSJF << " " << switchSJF_wyw << " " << switchRR;
+	file2.close();
 	std::cerr << std::endl;
 }
 
 int main() {
 	std::ios::sync_with_stdio(0);
+	std::cout.tie(0);
 	
 	const int tests = 5;
 	

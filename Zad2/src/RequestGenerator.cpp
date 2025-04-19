@@ -64,7 +64,8 @@ std::vector<Request> RequestGenerator::generateRequests(
 	bool isRealTime,
 	double real_Time_Chance,
 	const size_t d_Min,
-	const size_t d_Max
+	const size_t d_Max,
+	const bool is_Anty_Scan
 ) {
 	if (real_Time_Chance < 0.0 || real_Time_Chance > 1.0)
 		throw std::runtime_error("Incorrect chance argument, should be a double between 0.0 and 1.0");
@@ -105,7 +106,7 @@ std::vector<Request> RequestGenerator::generateRequests(
 		case Mode::NORMAL:
 			setStrategyArrivalTime(std::make_unique<NormalDistribution>(
 				time_Limit / 2.0,
-				time_Limit / 4.0,
+				time_Limit / 3.0,
 				0,
 				time_Limit
 			));
@@ -117,13 +118,34 @@ std::vector<Request> RequestGenerator::generateRequests(
 			throw std::runtime_error("Unrecognized arrival time mode");
 		}
 
-		for (size_t i = 0; i < range_Count && total_requests < request_Count; i++) {
-			bool rt = isRealTime && dist(engine);
-			size_t deadline = rt ? std::uniform_int_distribution<size_t>(d_Min, d_Max)(engine) : 0;
+		if (is_Anty_Scan) {
+			size_t i = 50;
+			size_t c = 0;
+			bool going_Right = true;
+			while (c < range_Count && total_requests < request_Count) {
+				bool rt = isRealTime && dist(engine);
+				size_t deadline = rt ? std::uniform_int_distribution<size_t>(d_Min, d_Max)(engine) : 0;
 
-			Request r(id++, strategy_Position->generate(engine), strategy_Arrival_Time->generate(engine), deadline, rt);
-			requests.push_back(r);
-			total_requests++;
+				Request r(id++, i, strategy_Arrival_Time->generate(engine), deadline, rt);
+				requests.push_back(r);
+				total_requests++;
+				c++;
+				if (going_Right) i++;
+				else i--;
+				if (i <= 0 || i >= disc_Size) {
+					going_Right = !going_Right;
+				}
+			}
+		}
+		else {
+			for (size_t i = 0; i < range_Count && total_requests < request_Count; i++) {
+				bool rt = isRealTime && dist(engine);
+				size_t deadline = rt ? std::uniform_int_distribution<size_t>(d_Min, d_Max)(engine) : 0;
+
+				Request r(id++, strategy_Position->generate(engine), strategy_Arrival_Time->generate(engine), deadline, rt);
+				requests.push_back(r);
+				total_requests++;
+			}
 		}
 	}
 

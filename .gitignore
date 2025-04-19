@@ -365,3 +365,5 @@ FodyWeavers.xsd
 # Custom ignores
 CPUScheduling/graphs/*
 !CPUScheduling/graphs/.gitkeep
+Zad2/data/*
+Zad2/graphs/

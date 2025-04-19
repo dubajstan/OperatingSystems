@@ -7,7 +7,7 @@
 
 enum Mode {
 	NORMAL,
-	UNIFORM
+	UNIFORM,
 };
 
 class DistributionStrategy {
@@ -55,6 +55,6 @@ public:
 	RequestGenerator();
 	~RequestGenerator();
 
-	std::vector<Request> generateRequests(const size_t disc_Size, const size_t time_Limit, const size_t request_Count, const std::vector<std::pair<double, double>>& ranges, const Mode position_Mode, const Mode arrival_Time_Mode, bool isRealTime, double real_Time_Chance, const size_t d_Min, const size_t d_Max);
+	std::vector<Request> generateRequests(const size_t disc_Size, const size_t time_Limit, const size_t request_Count, const std::vector<std::pair<double, double>>& ranges, const Mode position_Mode, const Mode arrival_Time_Mode, bool isRealTime, double real_Time_Chance, const size_t d_Min, const size_t d_Max, const bool is_Anty_Scan);
 	
 };

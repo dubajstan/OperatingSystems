@@ -6,7 +6,6 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
 from tkinter import ttk
 
-# GLOBALNA KONFIGURACJA STYLU
 def configure_style():
     sns.set_style("whitegrid")
     sns.set_palette("pastel")
@@ -17,7 +16,6 @@ def configure_style():
     plt.rcParams['grid.alpha'] = 0.3
     plt.rcParams['grid.linestyle'] = '--'
 
-# TWORZENIE OKNA GŁÓWNEGO
 def create_main_window(title, size="1400x1000"):
     root = tk.Tk()
     root.title(title)
@@ -45,7 +43,6 @@ def create_main_window(title, size="1400x1000"):
     
     return root, content_frame
 
-# WCZYTYWANIE DANYCH TESTOWYCH
 def load_test_data():
     nr_testow = 5
     tryby = list(itertools.permutations(["gaussian", "linear", "inverse_linear"], 2))
@@ -66,35 +63,34 @@ def load_test_data():
                 continue
     return test_data
 
-# WCZYTYWANIE WYNIKÓW ALGORYTMÓW I GŁODZENIA
 def load_algorithm_results():
     tryby = list(itertools.permutations(["gaussian", "linear", "inverse_linear"], 2))
     
     results = []
     for tryb in tryby:
         try:
-            # Wyniki algorytmów
             with open(f"graphs/wyniki_{tryb[0]}_{tryb[1]}.txt", 'r') as f:
                 alg_data = list(map(float, f.read().split()))
             
-            # Dane o głodzonych procesach
             with open(f"graphs/starvation_{tryb[0]}_{tryb[1]}.txt", 'r') as f:
                 starvation_data = list(map(int, f.read().split()))
+                
+            with open(f"graphs/switch_{tryb[0]}_{tryb[1]}.txt", 'r') as f:
+                switch_data = list(map(int, f.read().split()))
             
             results.append({
                 'Tryb': f"{tryb[0]}_{tryb[1]}",
                 'Algorytmy': {
-                    'FCFS': {'WT': alg_data[0], 'TAT': alg_data[1], 'Starvation': starvation_data[0]},
-                    'SJF': {'WT': alg_data[2], 'TAT': alg_data[3], 'Starvation': starvation_data[1]},
-                    'SJF_wyw': {'WT': alg_data[4], 'TAT': alg_data[5], 'Starvation': starvation_data[2]},
-                    'RR': {'WT': alg_data[6], 'TAT': alg_data[7], 'Starvation': starvation_data[3]}
+                    'FCFS': {'WT': alg_data[0], 'TAT': alg_data[1], 'Starvation': starvation_data[0], 'Switch': switch_data[0]},
+                    'SJF': {'WT': alg_data[2], 'TAT': alg_data[3], 'Starvation': starvation_data[1], 'Switch': switch_data[1]},
+                    'SJF_wyw': {'WT': alg_data[4], 'TAT': alg_data[5], 'Starvation': starvation_data[2], 'Switch': switch_data[2]},
+                    'RR': {'WT': alg_data[6], 'TAT': alg_data[7], 'Starvation': starvation_data[3], 'Switch': switch_data[3]}
                 }
             })
         except FileNotFoundError:
             continue
     return results
 
-# TWORZENIE TABELI W TKINTER
 def create_table(parent, title, columns, data):
     frame = ttk.LabelFrame(parent, text=title)
     frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
@@ -114,7 +110,6 @@ def create_table(parent, title, columns, data):
     
     return frame
 
-# WIZUALIZACJA DANYCH TESTOWYCH
 def show_test_data(test_data, parent_frame):
     for test in test_data:
         test_frame = ttk.LabelFrame(parent_frame, text=f"{test['Test']} - {test['Tryb']}")
@@ -122,7 +117,6 @@ def show_test_data(test_data, parent_frame):
         
         df = test['Dane']
         
-        # Wykresy rozkładów
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(f"Rozkłady czasów - {test['Test']} - {test['Tryb']}")
         
@@ -140,26 +134,26 @@ def show_test_data(test_data, parent_frame):
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-# WIZUALIZACJA WYNIKÓW ALGORYTMÓW
 def show_algorithm_results(results, parent_frame):
     for result in results:
         result_frame = ttk.LabelFrame(parent_frame, text=f"Wyniki - {result['Tryb']}")
         result_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Przygotowanie danych do tabel
+        # dane do tabeli
         alg_data = []
         starvation_counts = []
+        switch_counts = []
         for alg_name, alg_values in result['Algorytmy'].items():
             alg_data.append([alg_name, f"{alg_values['WT']:.2f}", f"{alg_values['TAT']:.2f}"])
             starvation_counts.append({'Algorytm': alg_name, 'Liczba głodzeń': alg_values['Starvation']})
+            switch_counts.append({'Algorytm' : alg_name, 'Liczba przełączeń' : alg_values['Switch']})
         
-        # Tabela wyników algorytmów
         create_table(result_frame, 
                    "Średnie czasy wykonania",
                    ['Algorytm', 'WT', 'TAT'],
                    alg_data)
         
-        # Wykresy porównawcze
+        # wykresy porownanie algorytmow
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
         fig.suptitle(f"Porównanie algorytmów - {result['Tryb']}")
         
@@ -182,38 +176,45 @@ def show_algorithm_results(results, parent_frame):
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
-        # **Dodanie histogramu dla głodzonych procesów**
-        if starvation_counts:
-            fig_starvation, ax_starvation = plt.subplots(figsize=(8, 5))
-            df_starvation = pd.DataFrame(starvation_counts)
+        if starvation_counts and switch_counts:
+            fig_metrics, (ax_starvation, ax_switch) = plt.subplots(1, 2, figsize=(12, 5))
+            fig_metrics.suptitle(f"Miary jakości algorytmów - {result['Tryb']}")
             
-            sns.barplot(data=df_starvation, x='Algorytm', y='Liczba głodzeń', ax=ax_starvation, palette="Oranges_d")
+            # zaglodzenia
+            df_starvation = pd.DataFrame(starvation_counts)
+            sns.barplot(data=df_starvation, x='Algorytm', y='Liczba głodzeń', 
+                        ax=ax_starvation, palette="Oranges_d")
             ax_starvation.set_title("Liczba głodzonych procesów")
             ax_starvation.set_ylabel("Liczba procesów")
             
-            canvas_starvation = FigureCanvasTkAgg(fig_starvation, master=result_frame)
-            canvas_starvation.draw()
-            canvas_starvation.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+            # switche
+            df_switch = pd.DataFrame(switch_counts)
+            sns.barplot(data=df_switch, x='Algorytm', y='Liczba przełączeń', 
+                        ax=ax_switch, palette="Greens_d")
+            ax_switch.set_title("Liczba przełączeń kontekstu")
+            ax_switch.set_ylabel("Liczba przełączeń")
+            
+            plt.tight_layout()
+            
+            canvas_metrics = FigureCanvasTkAgg(fig_metrics, master=result_frame)
+            canvas_metrics.draw()
+            canvas_metrics.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
 
-# GŁÓWNA FUNKCJA
 def main():
     configure_style()
-    root, content_frame = create_main_window("Kompleksowa analiza algorytmów planowania")
+    root, content_frame = create_main_window("CPU Scheduling")
     
-    # Wczytanie danych
     test_data = load_test_data()
     algorithm_results = load_algorithm_results()
     
     if not test_data and not algorithm_results:
         tk.Label(content_frame, text="Brak danych do wyświetlenia").pack()
     else:
-        # Nagłówek dla danych testowych
         if test_data:
             tk.Label(content_frame, text="DANE TESTOWE", font=('Helvetica', 14, 'bold')).pack(pady=10)
             show_test_data(test_data, content_frame)
         
-        # Nagłówek dla wyników algorytmów
         if algorithm_results:
             tk.Label(content_frame, text="WYNIKI ALGORYTMÓW", font=('Helvetica', 14, 'bold')).pack(pady=10)
             show_algorithm_results(algorithm_results, content_frame)
